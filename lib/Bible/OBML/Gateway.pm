@@ -4,140 +4,82 @@ package Bible::OBML::Gateway;
 use 5.012;
 
 use Moose;
-use MooseX::ClassAttribute;
-use Mojo::URL;
 use Mojo::DOM;
+use Mojo::File;
+use Mojo::URL;
+use Mojo::UserAgent;
+use Try::Tiny;
+use Bible::Reference;
+use Bible::OBML;
 
 # VERSION
 
 with 'Throwable';
 
-class_has _summary_dom => ( isa => 'Mojo::DOM', is => 'ro', lazy => 1, default => sub ($self) {
-    my $file = filename(
-        $self->config->get( qw( config_app root_dir ) ),
-        $self->config->get('data'),
-        'gateway',
-        'niv',
-        'summary.html',
+has ua => ( isa => 'Mojo::UserAgent', is => 'rw', lazy => 1, default => sub {
+    return Mojo::UserAgent->new;
+} );
+has url => ( isa => 'Mojo::URL', is => 'rw', lazy => 1, default => sub {
+    return Mojo::URL->new('https://www.biblegateway.com/passage/');
+} );
+has ref => ( isa => 'Bible::Reference', is => 'rw', lazy => 1, default => sub {
+    return Bible::Reference->new(
+        bible    => 'Protestant',
+        acronyms => 1,
+        sorting  => 1,
     );
-
-    my $html;
-    unless ( -f $file ) {
-        $html = $self->ua->get('https://www.biblegateway.com/passage/?version=NIV&search=')->result->text;
-        spurt( $file, $html );
-    }
-    else {
-        $html = slurp($file);
-    }
-
-    return Mojo::DOM->new($html);
 } );
+has obml_lib    => ( isa => 'Bible::OBML', is => 'rw', lazy => 1, default => sub { Bible::OBML->new } );
+has translation => ( isa => 'Str', is => 'rw', lazy => 1, default => 'NIV' );
+has body        => ( isa => 'Str', is => 'rw' );
+has dom         => ( isa => 'Mojo::DOM', is => 'rw' );
+has obml        => ( isa => 'Str', is => 'rw' );
+has data        => ( isa => 'ArrayRef[HashRef]', is => 'rw' );
 
-class_has translations => ( isa => 'ArrayRef', is => 'ro', lazy => 1, default => sub ($self) {
-    my ( $language, $translations );
-    for my $element (
-        $self->_summary_dom->find(q{
-            div.search-translation select.search-translation-select option
-        })->each
-    ) {
-        my $attr = $element->attr;
+sub get {
+    my ( $self, $book_chapter, $translation ) = @_;
+    $self->throw('Book/chapter not defined in call to get()') unless ($book_chapter);
+    $self->throw('Verse ranges and partial chapter ranges not supported') if ( $book_chapter =~ /[:-]/ );
 
-        if ( ( $attr->{class} || '' ) eq 'spacer' ) {
-            next;
-        }
-        elsif ( ( $attr->{class} || '' ) eq 'lang' ) {
-            ( my $name = $element->text ) =~ s/\s*\(([^\)]+)\)\s*//;
-            my $value = $1;
+    my $url = $self->url->query({
+        search  => $book_chapter,
+        version => ( $translation // $self->translation ),
+    })->to_string;
 
-            my $dash = chr(8212);
-            $name =~ s/\s*$dash\s*//g;
+    my $result = $self->ua->get($url)->result;
+    $self->throw(qq{Failed to get "$book_chapter" via "$url"})
+        unless ( $result and $result->code == 200 and $result->dom->at('h1.bcv') );
 
-            $language = {
-                value => $value,
-                name  => $name,
-            };
-        }
-        else {
-            ( my $name = $element->text ) =~ s/\s*\([^\)]*\)\s*$//;
-
-            push( @$translations, {
-                value    => $attr->{value},
-                name     => $name,
-                language => $language,
-            } );
-        }
-    }
-
-    return $translations;
-} );
-
-class_has books => ( isa => 'HashRef', is => 'ro', lazy => 1, default => sub ($self) {
-    return {
-        map {
-            $_->at('td.book-name')->text => $_->at('td.chapters a:last-child')->text
-        } $self->_summary_dom->find('table#booklist tr')->each
-    };
-} );
-
-sub translations_for_language ( $self, $language ) {
-    $language = lc($language);
-
-    return [ grep {
-        lc( $_->{language}{name} ) eq $language or
-        lc( $_->{language}{value} ) eq $language
-    } @{ $self->translations } ];
+    return $self->parse( $result->body, $result->dom );
 }
 
-sub raw_chapter ( $self, $book_chapter, $translation ) {
-    $translation //= 'NIV';
+sub parse {
+    my ( $self, $body, $dom ) = @_;
 
-    E->throw('Book/chapter provided does not look legitimate')
-        unless ( $book_chapter and $book_chapter =~ /\w\s+\d+\s*$/ );
+    $self->body($body);
+    $self->dom( $dom // Mojo::DOM->new($body) );
 
-    $book_chapter =~ /^\s*(?<book>.+)\s+(?<chapter>\d+)\s*$/;
+    ( my $book_chapter = $self->dom->at('h1.bcv')->text ) =~ s/:.+$//;
 
-    my $file = filename(
-        $self->config->get( qw( config_app root_dir ) ),
-        $self->config->get('data'),
-        'gateway',
-        $translation,
-        $+{book},
-        $+{chapter} . '.html',
-    );
+    my $passage = Mojo::DOM->new(
+        $self->dom->at('div.passage-bible div.passage-content div:first-child')->to_string
+    )->at('div');
 
-    return slurp($file) if ( -f $file );
+    delete $passage->root->attr->{'class'};
+    $passage->at('h1')->remove;
+    $passage->descendant_nodes->grep( sub { $_->type eq 'comment' } )->each( sub { $_->remove } );
 
-    my $html = $self->ua->get(
-        Mojo::URL
-            ->new('https://www.biblegateway.com/passage/')
-            ->query( version => $translation, search => $book_chapter )
-            ->to_string
-    )->result->text;
-
-    spurt( $file, $html );
-    return $html;
-}
-
-sub chapter_as_obml ( $self, $book_chapter, $translation ) {
-    $translation //= 'NIV';
-
-    my $passage = Mojo::DOM
-        ->new( $self->raw_chapter( $book_chapter, $translation ) )
-        ->at('div.passage-bible div.passage-content div:first-child');
-
-    my $i = sub {
-        my ($node) = @_;
-        $node->find('i')->each( sub {
-            $_->replace( '^' . $_->text . '^' );
-        } );
-        return $node->all_text;
-    };
+    $passage->descendant_nodes->grep( sub { $_->tag and $_->tag eq 'i' } )->each( sub {
+        $_->replace( '^' . $_->content . '^' );
+    } );
 
     my $footnotes;
     if ( my $div_footnotes = $passage->at('div.footnotes') ) {
         $footnotes = {
             map {
-                $_->at('a')->attr('href') => $i->( $_->at('span') )
+                '#' . $_->attr('id') => $self->ref->clear->in(
+                    $_->at('span')->content
+                )->as_text
             } $div_footnotes->find('ol li')->each
         };
         $div_footnotes->remove;
@@ -147,72 +89,110 @@ sub chapter_as_obml ( $self, $book_chapter, $translation ) {
     if ( my $div_crossrefs = $passage->at('div.crossrefs') ) {
         $crossrefs = {
             map {
-                $_->at('a:first-child')->attr('href') => $self->parse_out_refs(
+                '#' . $_->attr('id') => $self->ref->clear->in(
                     $_->at('a:last-child')->attr('data-bibleref')
-                )
+                )->refs
             } $div_crossrefs->find('ol li')->each
         };
         $div_crossrefs->remove;
     }
 
-    return 42;
+    $passage->descendant_nodes->grep( sub { $_->tag and $_->tag eq 'sup' and $_->attr('class') } )->each( sub {
+        if ( $_->attr('class') eq 'footnote' ) {
+            $_->replace( '[' . $footnotes->{ $_->attr('data-fn') } . ']' );
+        }
+        elsif ( $_->attr('class') eq 'crossreference' ) {
+            $_->replace( '{' . $crossrefs->{ $_->attr('data-cr') } . '}' );
+        }
+    } );
+
+    $passage->descendant_nodes->grep( sub { $_->tag and ( $_->tag eq 'h3' or $_->tag eq 'h4' ) } )->each( sub {
+        $_->replace( "= " . $_->content . " =\n\n" );
+    } );
+
+    $passage->descendant_nodes->grep( sub {
+        $_->tag and $_->tag eq 'span' and $_->attr('class') and $_->attr('class') eq 'chapternum'
+    } )->each( sub {
+        $_->replace('|1|');
+    } );
+
+    $passage->descendant_nodes->grep( sub {
+        $_->tag and $_->tag eq 'sup' and $_->attr('class') and $_->attr('class') eq 'versenum'
+    } )->each( sub {
+        $_->replace( '|' . ( ( $_->content =~ /(\d+)/ ) ? $1 : '?' ) . '|' );
+    } );
+
+    $passage->descendant_nodes->grep( sub { $_->tag and $_->tag eq 'p' } )->each( sub {
+        $_->replace( $_->content . "\n\n" );
+    } );
+
+    $passage->descendant_nodes->grep( sub {
+        $_->tag and $_->tag eq 'span' and $_->attr('class') and $_->attr('class') eq 'woj'
+    } )->each( sub {
+        $_->replace( '[*' . $_->content . '*]' );
+    } );
+
+    $passage->descendant_nodes->grep( sub {
+        $_->tag and $_->tag eq 'span' and $_->attr('class') and $_->attr('class') =~ 'text '
+    } )->each( sub {
+        $_->replace( $_->content );
+    } );
+
+    $passage->descendant_nodes->grep( sub {
+        $_->tag and $_->tag eq 'div' and $_->attr('class') and $_->attr('class') =~ 'poetry '
+    } )->each( sub {
+        $_->descendant_nodes->grep( sub { $_->tag and $_->tag eq 'br' } )->each( sub { $_->replace("\n_") } );
+
+        $_->descendant_nodes->grep( sub {
+            $_->tag and $_->tag eq 'span' and $_->attr('class') and $_->attr('class') eq 'indent-1-breaks'
+        } )->each( sub { $_->remove } );
+
+        $_->descendant_nodes->grep( sub {
+            $_->tag and $_->tag eq 'span' and $_->attr('class') and $_->attr('class') eq 'indent-1'
+        } )->each( sub { $_->replace( '_' . $_->content ) } );
+
+        $_->replace( '_' . $_->content );
+    } );
+
+    my $obml = '~' . $book_chapter . "~\n\n" . $passage->content;
+
+    $obml =~ s/^[ ]*_{2,}/ ' ' x 4 /msge;
+    $obml =~ s/^[ ]*_/ ' ' x 4 /msge;
+    $obml =~ s/(\{[^\}]+\})(\s*)(\[[^\]]+\])/$3$2$1/g;
+    $obml =~ s/\[\*(\|\d+\|)/$1*/g;
+    $obml =~ s/((?:(?:\[[^\]]+\])|\s|(?:\{[^\}]+\}))+)\*\]/*$1/g;
+    $obml =~ s/\[\*/*/g;
+    $obml =~ s/\*\]/*/g;
+
+    utf8::decode($obml);
+    $obml = $self->obml_lib->desmartify($obml);
+    utf8::encode($obml);
+
+    $self->data( $self->obml_lib->parse($obml) );
+    $self->obml( $self->obml_lib->render( $self->data ) );
+
+    return $self;
 }
 
-sub verses_from_books ( $self, $books, $translation ) {
-    $translation //= 'NIV';
-
-    E->throw('First parameter must be an arrayref containing books')
-        unless ( ref $books eq 'ARRAY' and @$books );
-
-    for my $book (@$books) {
-        E->throw("Didn't recognize $book as a formal book name") unless ( $self->books->{$book} );
-    }
-
-    my ( $content, $headers );
-    for my $book (@$books) {
-        for my $chapter ( 1 .. $self->books->{$book} ) {
-            my $dom = Mojo::DOM
-                ->new( $self->raw_chapter( "$book $chapter", $translation ) )
-                ->at('div.passage-bible div.passage-content div:first-child');
-
-            for my $verse ( $dom->find('h3 span.text, p span.text')->each ) {
-                $verse->attr('class') =~ /\w\-\d+\-(?<verse>\d+)$/;
-                push(
-                    @{ ( ( $verse->parent->tag eq 'h3' ) ? $headers : $content )->{$book}{$chapter}{ $+{verse} } },
-                    $verse->text,
-                );
-            }
-        }
-    }
-
-    for my $book ( sort { $a cmp $b } keys %$content ) {
-        for my $chapter ( sort { $a <=> $b } keys %{ $content->{$book} } ) {
-            for my $verse ( sort { $a <=> $b } keys %{ $content->{$book}{$chapter} } ) {
-                print join( "\t",
-                    ( ( $headers->{$book}{$chapter}{$verse} ) ? 1 : 0 ),
-                    $book,
-                    $chapter,
-                    $verse,
-                    join( ' ', @{ $content->{$book}{$chapter}{$verse} } ),
-                ), "\n";
-            }
-        }
-    }
+sub html {
+    my ($self) = @_;
+    $self->throw('No result to return HTML for') unless ( $self->body );
+    return $self->body;
 }
 
-sub verses ( $self, $book_chapter, $translation ) {
-    $translation //= 'NIV';
+sub save {
+    my ( $self, $filename ) = @_;
+    $self->throw('No filename provided to save to') unless ($filename);
+    $self->throw('No result to return HTML for') unless ( $self->body );
+    Mojo::File->new($filename)->spurt( $self->body );
+    return $self;
+}
 
-    my $dom = Mojo::DOM
-        ->new( $self->raw_chapter( $book_chapter, $translation ) )
-        ->at('div.passage-bible div.passage-content div:first-child');
-
-    for my $verse ( $dom->find('p span.text')->each ) {
-        print $verse->attr('class'), "\n";
-        print $verse->text, "\n";
-    }
-
-    return 42;
+sub load {
+    my ( $self, $filename ) = @_;
+    $self->throw('No filename provided to save to') unless ($filename);
+    $self->parse( Mojo::File->new($filename)->slurp );
+    return $self;
 }
 
 __PACKAGE__->meta->make_immutable;
@@ -221,21 +201,91 @@ __END__
 
 =pod
 
-=begin :prelude
-
-=for test_synopsis
-my( $obml, $filename, $data, $skip_smartify );
-
-=end :prelude
-
 =head1 SYNOPSIS
 
     use Bible::OBML::Gateway;
-    my $self = Bible::OBML::Gateway->new;
+
+    my $bg = Bible::OBML::Gateway->new;
+    $bg->translation('NIV');
+
+    my $obml = $bg->get( 'Romans 12', 'NIV' )->obml;
+    my $data = $bg->get( 'Romans 12' )->data;
+    my $html = $bg->get('Romans 12')->html;
+
+    $bg->get( 'Romans 12', 'NIV' )->save('Romans_12_NIV.html');
+    say $bg->load('Romans_12_NIV.html')->obml;
 
 =head1 DESCRIPTION
 
-This module...
+This module consumes Bible Gateway content and converts it to Open Bible Markup
+Language (OBML).
+
+=head1 METHODS
+
+The following methods are supported.
+
+=head2 new
+
+Instantiates a new gateway object. You can optionally pass a translation
+acronym to be used on subsequent requests.
+
+    my $bg = Bible::OBML::Gateway->new('NIV');
+
+=head2 translation
+
+Get or set the current translation acronym.
+
+    say $bg->translation;
+    $bg->translation('NIV');
+
+=head2 get
+
+Gets the raw HTML content for a given chapter represented by book, chapter,
+and translation. The book and chapter can be combined with a space. The
+translation if provided will override the translation set in the object.
+
+    $bg->get( 'Romans 12', 'NIV' );
+    $bg->get('Romans 12');
+
+=head2 obml
+
+Parses the previously C<get()>-ed raw HTML if it hasn't been parsed yet and
+returns Open Bible Markup Language (OBML) using L<Bible::OBML>.
+
+    my $obml = $bg->get('Romans 12')->obml;
+
+=head2 data
+
+Parses the previously C<get()>-ed raw HTML if it hasn't been parsed yet and
+returns a data structure of content that could be passed into L<Bible::OBML>'s
+C<render()> method.
+
+    my $data = $bg->get('Romans 12')->data;
+
+=head2 html
+
+Returns the previously C<get()>-ed raw HTML.
+
+    my $html = $bg->get('Romans 12')->html;
+
+=head2 save
+
+Saves the previously C<get()>-ed raw HTML to a file.
+
+    $bg->get('Romans 12')->save('Romans_12_NIV.html');
+
+=head2 load
+
+Loads raw HTML from a file.
+
+    say $bg->load('Romans_12_NIV.html')->obml;
+
+=head2 parse
+
+This method expects raw HTML and optionally a pre-made DOM object. It will
+create a DOM if necessary, then work through the DOM to parse out content into
+a data structure and turn it into OBML. You should never need to call this
+method directly as it'll be indirectly called for you as needed.
 
 =head1 SEE ALSO
 
