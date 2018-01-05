@@ -4,13 +4,14 @@ package Bible::OBML::Gateway;
 use 5.012;
 
 use Moose;
+use MooseX::Privacy;
 use Mojo::DOM;
 use Mojo::File;
 use Mojo::URL;
 use Mojo::UserAgent;
 use Try::Tiny;
-use Bible::Reference;
 use Bible::OBML;
+use Bible::Reference 1.02;
 
 # VERSION
 
@@ -22,19 +23,26 @@ has ua => ( isa => 'Mojo::UserAgent', is => 'rw', lazy => 1, default => sub {
 has url => ( isa => 'Mojo::URL', is => 'rw', lazy => 1, default => sub {
     return Mojo::URL->new('https://www.biblegateway.com/passage/');
 } );
-has ref => ( isa => 'Bible::Reference', is => 'rw', lazy => 1, default => sub {
+has translation => ( isa => 'Str', is => 'rw', lazy => 1, default => 'NIV' );
+has obml        => ( isa => 'Str', is => 'rw' );
+has data        => ( isa => 'ArrayRef[HashRef]', is => 'rw' );
+
+has _reference => ( isa => 'Bible::Reference', is => 'rw', lazy => 1, traits => ['Private'], default => sub {
     return Bible::Reference->new(
         bible    => 'Protestant',
         acronyms => 1,
         sorting  => 1,
     );
 } );
-has obml_lib    => ( isa => 'Bible::OBML', is => 'rw', lazy => 1, default => sub { Bible::OBML->new } );
-has translation => ( isa => 'Str', is => 'rw', lazy => 1, default => 'NIV' );
-has body        => ( isa => 'Str', is => 'rw' );
-has dom         => ( isa => 'Mojo::DOM', is => 'rw' );
-has obml        => ( isa => 'Str', is => 'rw' );
-has data        => ( isa => 'ArrayRef[HashRef]', is => 'rw' );
+has _obml_lib => (
+    isa     => 'Bible::OBML',
+    is      => 'rw',
+    lazy    => 1,
+    traits  => ['Private'],
+    default => sub { Bible::OBML->new },
+);
+has _body => ( isa => 'Str', is => 'rw', traits  => ['Private'] );
+has _dom  => ( isa => 'Mojo::DOM', is => 'rw', traits  => ['Private'] );
 
 sub get {
     my ( $self, $book_chapter, $translation ) = @_;
@@ -50,19 +58,19 @@ sub get {
     $self->throw(qq{Failed to get "$book_chapter" via "$url"})
         unless ( $result and $result->code == 200 and $result->dom->at('h1.bcv') );
 
-    return $self->parse( $result->body, $result->dom );
+    return $self->_parse( $result->body, $result->dom );
 }
 
-sub parse {
+private_method _parse => sub {
     my ( $self, $body, $dom ) = @_;
 
-    $self->body($body);
-    $self->dom( $dom // Mojo::DOM->new($body) );
+    $self->_body($body);
+    $self->_dom( $dom // Mojo::DOM->new($body) );
 
-    ( my $book_chapter = $self->dom->at('h1.bcv')->text ) =~ s/:.+$//;
+    ( my $book_chapter = $self->_dom->at('h1.bcv')->text ) =~ s/:.+$//;
 
     my $passage = Mojo::DOM->new(
-        $self->dom->at('div.passage-bible div.passage-content div:first-child')->to_string
+        $self->_dom->at('div.passage-bible div.passage-content div:first-child')->to_string
     )->at('div');
 
     delete $passage->root->attr->{'class'};
@@ -77,7 +85,7 @@ sub parse {
     if ( my $div_footnotes = $passage->at('div.footnotes') ) {
         $footnotes = {
             map {
-                '#' . $_->attr('id') => $self->ref->clear->in(
+                '#' . $_->attr('id') => $self->_reference->clear->in(
                     $_->at('span')->content
                 )->as_text
             } $div_footnotes->find('ol li')->each
@@ -89,7 +97,7 @@ sub parse {
     if ( my $div_crossrefs = $passage->at('div.crossrefs') ) {
         $crossrefs = {
             map {
-                '#' . $_->attr('id') => $self->ref->clear->in(
+                '#' . $_->attr('id') => $self->_reference->clear->in(
                     $_->at('a:last-child')->attr('data-bibleref')
                 )->refs
             } $div_crossrefs->find('ol li')->each
@@ -156,42 +164,43 @@ sub parse {
 
     my $obml = '~' . $book_chapter . "~\n\n" . $passage->content;
 
-    $obml =~ s/^[ ]*_{2,}/ ' ' x 4 /msge;
+    $obml =~ s/^[ ]*_{2,}/ ' ' x 6 /msge;
     $obml =~ s/^[ ]*_/ ' ' x 4 /msge;
     $obml =~ s/(\{[^\}]+\})(\s*)(\[[^\]]+\])/$3$2$1/g;
     $obml =~ s/\[\*(\|\d+\|)/$1*/g;
     $obml =~ s/((?:(?:\[[^\]]+\])|\s|(?:\{[^\}]+\}))+)\*\]/*$1/g;
     $obml =~ s/\[\*/*/g;
     $obml =~ s/\*\]/*/g;
+    $obml =~ s/=[^=\n]+=\n+(=[^=\n]+=)/$1/msg;
 
     utf8::decode($obml);
-    $obml = $self->obml_lib->desmartify($obml);
+    $obml = $self->_obml_lib->desmartify($obml);
     utf8::encode($obml);
 
-    $self->data( $self->obml_lib->parse($obml) );
-    $self->obml( $self->obml_lib->render( $self->data ) );
+    $self->data( $self->_obml_lib->parse($obml) );
+    $self->obml( $self->_obml_lib->render( $self->data ) );
 
     return $self;
-}
+};
 
 sub html {
     my ($self) = @_;
-    $self->throw('No result to return HTML for') unless ( $self->body );
-    return $self->body;
+    $self->throw('No result to return HTML for') unless ( $self->_body );
+    return $self->_body;
 }
 
 sub save {
     my ( $self, $filename ) = @_;
     $self->throw('No filename provided to save to') unless ($filename);
-    $self->throw('No result to return HTML for') unless ( $self->body );
-    Mojo::File->new($filename)->spurt( $self->body );
+    $self->throw('No result to return HTML for') unless ( $self->_body );
+    Mojo::File->new($filename)->spurt( $self->_body );
     return $self;
 }
 
 sub load {
     my ( $self, $filename ) = @_;
     $self->throw('No filename provided to save to') unless ($filename);
-    $self->parse( Mojo::File->new($filename)->slurp );
+    $self->_parse( Mojo::File->new($filename)->slurp );
     return $self;
 }
 
@@ -279,13 +288,6 @@ Saves the previously C<get()>-ed raw HTML to a file.
 Loads raw HTML from a file.
 
     say $bg->load('Romans_12_NIV.html')->obml;
-
-=head2 parse
-
-This method expects raw HTML and optionally a pre-made DOM object. It will
-create a DOM if necessary, then work through the DOM to parse out content into
-a data structure and turn it into OBML. You should never need to call this
-method directly as it'll be indirectly called for you as needed.
 
 =head1 SEE ALSO
 

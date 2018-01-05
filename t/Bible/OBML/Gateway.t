@@ -13,10 +13,8 @@ sub main {
     isa_ok( $self, PACKAGE );
 
     does_ok( $self, 'Throwable' );
-    has_attribute_ok( $self, $_, qq{attribute "$_" exists} ) for ( qw(
-        ua url ref obml_lib translation body dom obml data
-    ) );
-    can_ok( PACKAGE, $_ ) for ( qw( new translation get obml data html save load parse ) );
+    has_attribute_ok( $self, $_, qq{attribute "$_" exists} ) for ( qw( ua url translation obml data ) );
+    can_ok( PACKAGE, $_ ) for ( qw( new translation get obml data html save load ) );
 
     done_testing();
     return 0;
