@@ -1,10 +1,13 @@
 # NAME
 
-Bible::OBML::Gateway - Bible::OBML::Gateway - Bible Gateway content conversion to Open Bible Markup Language (OBML)
+Bible::OBML::Gateway - Bible Gateway content conversion to Open Bible Markup Language (OBML)
 
 # VERSION
 
-version 1.01
+version 1.02
+
+[![Build Status](https://travis-ci.org/gryphonshafer/Bible-OBML-Gateway.svg)](https://travis-ci.org/gryphonshafer/Bible-OBML-Gateway)
+[![Coverage Status](https://coveralls.io/repos/gryphonshafer/Bible-OBML-Gateway/badge.png)](https://coveralls.io/r/gryphonshafer/Bible-OBML-Gateway)
 
 # SYNOPSIS
 

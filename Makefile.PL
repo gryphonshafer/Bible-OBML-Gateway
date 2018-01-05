@@ -7,7 +7,7 @@ use 5.012;
 use ExtUtils::MakeMaker;
 
 my %WriteMakefileArgs = (
-  "ABSTRACT" => "Bible::OBML::Gateway - Bible Gateway content conversion to Open Bible Markup Language (OBML)",
+  "ABSTRACT" => "Bible Gateway content conversion to Open Bible Markup Language (OBML)",
   "AUTHOR" => "Gryphon Shafer <gryphon\@cpan.org>",
   "CONFIGURE_REQUIRES" => {
     "ExtUtils::MakeMaker" => 0
@@ -39,7 +39,7 @@ my %WriteMakefileArgs = (
     "strict" => 0,
     "warnings" => 0
   },
-  "VERSION" => "1.01",
+  "VERSION" => "1.02",
   "test" => {
     "TESTS" => "t/*.t t/Bible/OBML/*.t"
   }

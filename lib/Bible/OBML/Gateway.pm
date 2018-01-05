@@ -1,5 +1,5 @@
 package Bible::OBML::Gateway;
-# ABSTRACT: Bible::OBML::Gateway - Bible Gateway content conversion to Open Bible Markup Language (OBML)
+# ABSTRACT: Bible Gateway content conversion to Open Bible Markup Language (OBML)
 
 use 5.012;
 
@@ -209,6 +209,14 @@ __PACKAGE__->meta->make_immutable;
 __END__
 
 =pod
+
+=begin :badges
+
+=for markdown
+[![Build Status](https://travis-ci.org/gryphonshafer/Bible-OBML-Gateway.svg)](https://travis-ci.org/gryphonshafer/Bible-OBML-Gateway)
+[![Coverage Status](https://coveralls.io/repos/gryphonshafer/Bible-OBML-Gateway/badge.png)](https://coveralls.io/r/gryphonshafer/Bible-OBML-Gateway)
+
+=end :badges
 
 =head1 SYNOPSIS
 

@@ -1,6 +1,7 @@
 Revision history for Bible::OBML::Gateway
 
 {{$NEXT}}
+        - Minor doc patch (because I'm tired and didn't get it right the first time)
 
 1.01      2018-01-04 18:48:07-08:00 America/Los_Angeles
         - First version, released on an unsuspecting world.
