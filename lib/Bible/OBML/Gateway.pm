@@ -147,7 +147,7 @@ private_method _parse => sub {
     } );
 
     $passage->descendant_nodes->grep( sub {
-        $_->tag and $_->tag eq 'div' and $_->attr('class') and $_->attr('class') =~ 'poetry '
+        $_->tag and $_->tag eq 'div' and $_->attr('class') and $_->attr('class') =~ 'poetry'
     } )->each( sub {
         $_->descendant_nodes->grep( sub { $_->tag and $_->tag eq 'br' } )->each( sub { $_->replace("\n_") } );
 
@@ -172,6 +172,7 @@ private_method _parse => sub {
     $obml =~ s/\[\*/*/g;
     $obml =~ s/\*\]/*/g;
     $obml =~ s/=[^=\n]+=\n+(=[^=\n]+=)/$1/msg;
+    $obml =~ s/<span.*?>(.*?)<\/span>/$1/msg;
 
     utf8::decode($obml);
     $obml = $self->_obml_lib->desmartify($obml);
