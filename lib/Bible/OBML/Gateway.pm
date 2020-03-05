@@ -306,9 +306,7 @@ You can also look for additional information at:
 
 =for :list
 * L<GitHub|https://github.com/gryphonshafer/Bible-OBML-Gateway>
-* L<CPAN|http://search.cpan.org/dist/Bible-OBML-Gateway>
 * L<MetaCPAN|https://metacpan.org/pod/Bible::OBML::Gateway>
-* L<AnnoCPAN|http://annocpan.org/dist/Bible-OBML-Gateway>
 * L<Travis CI|https://travis-ci.org/gryphonshafer/Bible-OBML-Gateway>
 * L<Coveralls|https://coveralls.io/r/gryphonshafer/Bible-OBML-Gateway>
 * L<CPANTS|http://cpants.cpanauthors.org/dist/Bible-OBML-Gateway>
