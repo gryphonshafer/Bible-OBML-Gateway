@@ -235,7 +235,7 @@ The following methods are supported.
 Instantiates a new gateway object. You can optionally pass a translation
 acronym to be used on subsequent requests.
 
-    my $bg = Bible::OBML::Gateway->new('NIV');
+    my $bg = Bible::OBML::Gateway->new( translation => 'NIV' );
 
 =head2 translation
 
