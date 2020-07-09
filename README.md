@@ -4,7 +4,7 @@ Bible::OBML::Gateway - Bible Gateway content conversion to Open Bible Markup Lan
 
 # VERSION
 
-version 1.03
+version 1.04
 
 [![Build Status](https://travis-ci.org/gryphonshafer/Bible-OBML-Gateway.svg)](https://travis-ci.org/gryphonshafer/Bible-OBML-Gateway)
 [![Coverage Status](https://coveralls.io/repos/gryphonshafer/Bible-OBML-Gateway/badge.png)](https://coveralls.io/r/gryphonshafer/Bible-OBML-Gateway)
@@ -37,7 +37,7 @@ The following methods are supported.
 Instantiates a new gateway object. You can optionally pass a translation
 acronym to be used on subsequent requests.
 
-    my $bg = Bible::OBML::Gateway->new('NIV');
+    my $bg = Bible::OBML::Gateway->new( translation => 'NIV' );
 
 ## translation
 
@@ -58,14 +58,14 @@ translation if provided will override the translation set in the object.
 ## obml
 
 Parses the previously `get()`-ed raw HTML if it hasn't been parsed yet and
-returns Open Bible Markup Language (OBML) using [Bible::OBML](https://metacpan.org/pod/Bible::OBML).
+returns Open Bible Markup Language (OBML) using [Bible::OBML](https://metacpan.org/pod/Bible%3A%3AOBML).
 
     my $obml = $bg->get('Romans 12')->obml;
 
 ## data
 
 Parses the previously `get()`-ed raw HTML if it hasn't been parsed yet and
-returns a data structure of content that could be passed into [Bible::OBML](https://metacpan.org/pod/Bible::OBML)'s
+returns a data structure of content that could be passed into [Bible::OBML](https://metacpan.org/pod/Bible%3A%3AOBML)'s
 `render()` method.
 
     my $data = $bg->get('Romans 12')->data;
@@ -90,14 +90,12 @@ Loads raw HTML from a file.
 
 # SEE ALSO
 
-[Bible::OBML](https://metacpan.org/pod/Bible::OBML), [Bible::OBML::HTML](https://metacpan.org/pod/Bible::OBML::HTML), [Bible::Reference](https://metacpan.org/pod/Bible::Reference).
+[Bible::OBML](https://metacpan.org/pod/Bible%3A%3AOBML), [Bible::OBML::HTML](https://metacpan.org/pod/Bible%3A%3AOBML%3A%3AHTML), [Bible::Reference](https://metacpan.org/pod/Bible%3A%3AReference).
 
 You can also look for additional information at:
 
 - [GitHub](https://github.com/gryphonshafer/Bible-OBML-Gateway)
-- [CPAN](http://search.cpan.org/dist/Bible-OBML-Gateway)
 - [MetaCPAN](https://metacpan.org/pod/Bible::OBML::Gateway)
-- [AnnoCPAN](http://annocpan.org/dist/Bible-OBML-Gateway)
 - [Travis CI](https://travis-ci.org/gryphonshafer/Bible-OBML-Gateway)
 - [Coveralls](https://coveralls.io/r/gryphonshafer/Bible-OBML-Gateway)
 - [CPANTS](http://cpants.cpanauthors.org/dist/Bible-OBML-Gateway)
@@ -109,7 +107,7 @@ Gryphon Shafer <gryphon@cpan.org>
 
 # COPYRIGHT AND LICENSE
 
-This software is copyright (c) 2018 by Gryphon Shafer.
+This software is copyright (c) 2020 by Gryphon Shafer.
 
 This is free software; you can redistribute it and/or modify it under
 the same terms as the Perl 5 programming language system itself.
