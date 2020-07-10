@@ -4,7 +4,7 @@ Bible::OBML::Gateway - Bible Gateway content conversion to Open Bible Markup Lan
 
 # VERSION
 
-version 1.05
+version 1.06
 
 [![Build Status](https://travis-ci.org/gryphonshafer/Bible-OBML-Gateway.svg)](https://travis-ci.org/gryphonshafer/Bible-OBML-Gateway)
 [![Coverage Status](https://coveralls.io/repos/gryphonshafer/Bible-OBML-Gateway/badge.png)](https://coveralls.io/r/gryphonshafer/Bible-OBML-Gateway)

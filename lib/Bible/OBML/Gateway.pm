@@ -163,6 +163,7 @@ sub _parse {
     $obml =~ s/=[^=\n]+=\n+(=[^=\n]+=)/$1/msg;
     $obml =~ s/<span.*?>(.*?)<\/span>/$1/msg;
     $obml =~ s/(\*[^\*\{\[]+)(\s*\{[^\}]*\}\s*|\s*\[[^\]]*\]\s*)/$1*$2*/msg;
+    $obml =~ s|<[^>]*>||msg;
 
     utf8::decode($obml);
     $obml = $self->_obml_lib->desmartify($obml);
