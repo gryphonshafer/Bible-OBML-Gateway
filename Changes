@@ -1,6 +1,7 @@
 Revision history for Bible::OBML::Gateway
 
 {{$NEXT}}
+        - Fix for red letter (WoJ) text spanning a footnote or crossreference
 
 1.04      2020-07-09 09:14:27-07:00 America/Los_Angeles
         - Remove Moose dependency; replace with exact and exact::class
