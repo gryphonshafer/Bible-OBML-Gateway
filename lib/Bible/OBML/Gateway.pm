@@ -11,6 +11,7 @@ use Mojo::URL;
 use Mojo::UserAgent;
 use Bible::OBML;
 use Bible::Reference 1.02;
+use Text::Unidecode 'unidecode';
 
 # VERSION
 
@@ -107,13 +108,13 @@ sub _parse {
     } );
 
     $passage->descendant_nodes->grep( sub {
-        $_->tag and $_->tag eq 'span' and $_->attr('class') and $_->attr('class') eq 'chapternum'
+        $_->tag and $_->tag eq 'span' and $_->attr('class') and $_->attr('class') =~ /\bchapternum\b/
     } )->each( sub {
         $_->replace('|1|');
     } );
 
     $passage->descendant_nodes->grep( sub {
-        $_->tag and $_->tag eq 'sup' and $_->attr('class') and $_->attr('class') eq 'versenum'
+        $_->tag and $_->tag eq 'sup' and $_->attr('class') and $_->attr('class') =~ /\bversenum\b/
     } )->each( sub {
         $_->replace( '|' . ( ( $_->content =~ /(\d+)/ ) ? $1 : '?' ) . '|' );
     } );
@@ -152,6 +153,7 @@ sub _parse {
 
     my $obml = '~' . $book_chapter . "~\n\n" . $passage->content;
 
+    $obml =~ s/\|1\|(.*?\|1\|)/$1/ms;
     $obml =~ s/^[ ]*_{2,}/ ' ' x 6 /msge;
     $obml =~ s/^[ ]*_/ ' ' x 4 /msge;
     $obml =~ s/(\{[^\}]+\})(\s*)(\[[^\]]+\])/$3$2$1/g;
@@ -163,10 +165,10 @@ sub _parse {
     $obml =~ s/<span.*?>(.*?)<\/span>/$1/msg;
     $obml =~ s/(\*[^\*\{\[]+)(\s*\{[^\}]*\}\s*|\s*\[[^\]]*\]\s*)/$1*$2*/msg;
     $obml =~ s|<[^>]*>||msg;
+    $obml =~ s/(?<=\s)([\*\^]+)(\|\d+\|)/$2$1/msg;
 
-    utf8::decode($obml);
-    $obml = $self->_obml_lib->desmartify($obml);
-    utf8::encode($obml);
+    $obml = unidecode($obml);
+    $obml =~ s/\-{2,}/\-/g;
 
     $self->data( $self->_obml_lib->parse($obml) );
     $self->obml( $self->_obml_lib->render( $self->data ) );
