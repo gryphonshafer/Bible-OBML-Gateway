@@ -45,7 +45,7 @@ sub get {
 
     my $result = $self->ua->get($url)->result;
     croak(qq{Failed to get "$book_chapter" via "$url"})
-        unless ( $result and $result->code == 200 and $result->dom->at('h1.bcv') );
+        unless ( $result and $result->code == 200 and $result->dom->at('div.dropdown-display-text') );
 
     return $self->_parse( $result->body, $result->dom );
 }
@@ -56,14 +56,13 @@ sub _parse {
     $self->_body($body);
     $self->_dom( $dom // Mojo::DOM->new($body) );
 
-    ( my $book_chapter = $self->_dom->at('h1.bcv')->text ) =~ s/:.+$//;
+    ( my $book_chapter = $self->_dom->at('div.dropdown-display-text')->text ) =~ s/:.+$//;
 
     my $passage = Mojo::DOM->new(
-        $self->_dom->at('div.passage-bible div.passage-content div:first-child')->to_string
+        $self->_dom->at('div.passage-text div.passage-content div:first-child')->to_string
     )->at('div');
 
     delete $passage->root->attr->{'class'};
-    $passage->at('h1')->remove;
     $passage->descendant_nodes->grep( sub { $_->type eq 'comment' } )->each( sub { $_->remove } );
 
     $passage->descendant_nodes->grep( sub { $_->tag and $_->tag eq 'i' } )->each( sub {

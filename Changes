@@ -1,6 +1,7 @@
 Revision history for Bible::OBML::Gateway
 
 {{$NEXT}}
+        - Update parsing to match Gateway site
 
 1.06      2020-07-10 12:25:04-07:00 America/Los_Angeles
         - Fix to remove extraneous markup during parsing
