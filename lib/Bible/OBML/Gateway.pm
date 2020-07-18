@@ -9,9 +9,8 @@ use Mojo::DOM;
 use Mojo::File;
 use Mojo::URL;
 use Mojo::UserAgent;
-use Bible::OBML;
-use Bible::Reference 1.02;
-use Text::Unidecode 'unidecode';
+use Bible::OBML 1.14;
+use Bible::Reference 1.04;
 
 # VERSION
 
@@ -110,13 +109,13 @@ sub _parse {
     $passage->descendant_nodes->grep( sub {
         $_->tag and $_->tag eq 'span' and $_->attr('class') and $_->attr('class') =~ /\bchapternum\b/
     } )->each( sub {
-        $_->replace('|1|');
+        $_->replace('|1| ');
     } );
 
     $passage->descendant_nodes->grep( sub {
         $_->tag and $_->tag eq 'sup' and $_->attr('class') and $_->attr('class') =~ /\bversenum\b/
     } )->each( sub {
-        $_->replace( '|' . ( ( $_->content =~ /(\d+)/ ) ? $1 : '?' ) . '|' );
+        $_->replace( '|' . ( ( $_->content =~ /(\d+)/ ) ? $1 : '?' ) . '| ' );
     } );
 
     $passage->descendant_nodes->grep( sub { $_->tag and $_->tag eq 'p' } )->each( sub {
@@ -151,24 +150,33 @@ sub _parse {
         $_->replace( '_' . $_->content );
     } );
 
-    my $obml = '~' . $book_chapter . "~\n\n" . $passage->content;
+    my $obml = '~ ' . $book_chapter . " ~\n\n" . $passage->content;
 
-    $obml =~ s/\|1\|(.*?\|1\|)/$1/ms;
-    $obml =~ s/^[ ]*_{2,}/ ' ' x 6 /msge;
-    $obml =~ s/^[ ]*_/ ' ' x 4 /msge;
-    $obml =~ s/(\{[^\}]+\})(\s*)(\[[^\]]+\])/$3$2$1/g;
-    $obml =~ s/\[\*(\|\d+\|)/$1*/g;
+    $obml = $self->_obml_lib->desmartify($obml);
+
+    $obml =~ s/<span.*?>(.*?)<\/span>/$1/sg; # rm <span> tags but keep content
+    $obml =~ s|<[^>]*>||sg;                  # rm all remaining HTML
+
+    $obml =~ s/\|1\|(.*?\|1\|)/$1/s; # rm dup verse # if chapter # fails override (ex: John 8)
+
+    $obml =~ s/[ \t]+/ /g;             # turn all whitespace ranges into single spaces
+    $obml =~ s/[ ]*\r?[ ]*\n[ ]*/\n/g; # rm spacing around line breaks and fix line breaks
+    $obml =~ s/\n{3,}/\n\n/g;          # rm extra blank lines
+    $obml =~ s/(?:^\s+|\s+$)//g;       # rm initial or postscript blank lines
+
+    $obml =~ s/^_{2,}/ ' ' x 6 /mge; # set double-indent (ex: Heb 1)
+    $obml =~ s/^_/     ' ' x 4 /mge; # set double-indent (ex: Heb 1)
+
+    $obml =~ s/(\{[^\}]+\})(\s*)(\[[^\]]+\])/$3$2$1/g; # reorder crossrefs before footnotes
+
+    # move footnotes, spaces, and crossrefs in front of woj end to after the woj end
     $obml =~ s/((?:(?:\[[^\]]+\])|\s|(?:\{[^\}]+\}))+)\*\]/*$1/g;
-    $obml =~ s/\[\*/*/g;
-    $obml =~ s/\*\]/*/g;
-    $obml =~ s/=[^=\n]+=\n+(=[^=\n]+=)/$1/msg;
-    $obml =~ s/<span.*?>(.*?)<\/span>/$1/msg;
-    $obml =~ s/(\*[^\*\{\[]+)(\s*\{[^\}]*\}\s*|\s*\[[^\]]*\]\s*)/$1*$2*/msg;
-    $obml =~ s|<[^>]*>||msg;
-    $obml =~ s/(?<=\s)([\*\^]+)(\|\d+\|)/$2$1/msg;
 
-    $obml = unidecode($obml);
-    $obml =~ s/\-{2,}/\-/g;
+    $obml =~ s/\[\*/*/g; # set woj start
+    $obml =~ s/\*\]/*/g; # set woj end
+
+    $obml =~ s/([\*^])(\|\d+\|)(\s*)/$2$3$1/g; # fix markings left of verse number (ex: John 8)
+    $obml =~ s/=[^=\n]+=\n+(=[^=\n]+=)/$1/mg;  # rm preceeding duplicate header lines
 
     $self->data( $self->_obml_lib->parse($obml) );
     $self->obml( $self->_obml_lib->render( $self->data ) );
