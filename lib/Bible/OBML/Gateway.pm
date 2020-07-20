@@ -6,7 +6,8 @@ use 5.016;
 use exact;
 use exact::class;
 use Mojo::DOM;
-use Mojo::File;
+use Mojo::Util qw( encode decode );
+use Mojo::File 'path';
 use Mojo::URL;
 use Mojo::UserAgent;
 use Bible::OBML 1.14;
@@ -194,14 +195,14 @@ sub save {
     my ( $self, $filename ) = @_;
     croak('No filename provided to save to') unless ($filename);
     croak('No result to return HTML for') unless ( $self->_body );
-    Mojo::File->new($filename)->spurt( $self->_body );
+    path($filename)->spurt( $self->_body );
     return $self;
 }
 
 sub load {
     my ( $self, $filename ) = @_;
     croak('No filename provided to save to') unless ($filename);
-    $self->_parse( Mojo::File->new($filename)->slurp );
+    $self->_parse( decode( 'UTF-8', path($filename)->slurp ) );
     return $self;
 }
 

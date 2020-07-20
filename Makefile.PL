@@ -23,6 +23,7 @@ my %WriteMakefileArgs = (
     "Mojo::File" => 0,
     "Mojo::URL" => 0,
     "Mojo::UserAgent" => 0,
+    "Mojo::Util" => 0,
     "exact" => 0,
     "exact::class" => 0
   },
@@ -36,7 +37,7 @@ my %WriteMakefileArgs = (
     "strict" => 0,
     "warnings" => 0
   },
-  "VERSION" => "1.09",
+  "VERSION" => "1.10",
   "test" => {
     "TESTS" => "t/*.t t/Bible/OBML/*.t"
   }
@@ -53,6 +54,7 @@ my %FallbackPrereqs = (
   "Mojo::File" => 0,
   "Mojo::URL" => 0,
   "Mojo::UserAgent" => 0,
+  "Mojo::Util" => 0,
   "Test::More" => 0,
   "Test::Most" => 0,
   "constant" => 0,
