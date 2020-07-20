@@ -1,6 +1,8 @@
 Revision history for Bible::OBML::Gateway
 
 {{$NEXT}}
+
+1.10      2020-07-20 10:04:37-07:00 America/Los_Angeles
         - Fix to handle UTF-8 on save() and load() operations
 
 1.09      2020-07-17 17:00:09-07:00 America/Los_Angeles
