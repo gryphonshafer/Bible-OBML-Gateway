@@ -4,10 +4,10 @@ Bible::OBML::Gateway - Bible Gateway content conversion to Open Bible Markup Lan
 
 # VERSION
 
-version 1.10
+version 1.11
 
-[![Build Status](https://travis-ci.org/gryphonshafer/Bible-OBML-Gateway.svg)](https://travis-ci.org/gryphonshafer/Bible-OBML-Gateway)
-[![Coverage Status](https://coveralls.io/repos/gryphonshafer/Bible-OBML-Gateway/badge.png)](https://coveralls.io/r/gryphonshafer/Bible-OBML-Gateway)
+[![build](https://github.com/gryphonshafer/Bible-OBML-Gateway/workflows/build/badge.svg)](https://github.com/gryphonshafer/Bible-OBML-Gateway/actions?query=workflow%3Abuild)
+[![codecov](https://codecov.io/gh/gryphonshafer/Bible-OBML-Gateway/graph/badge.svg)](https://codecov.io/gh/gryphonshafer/Bible-OBML-Gateway)
 
 # SYNOPSIS
 
@@ -96,8 +96,8 @@ You can also look for additional information at:
 
 - [GitHub](https://github.com/gryphonshafer/Bible-OBML-Gateway)
 - [MetaCPAN](https://metacpan.org/pod/Bible::OBML::Gateway)
-- [Travis CI](https://travis-ci.org/gryphonshafer/Bible-OBML-Gateway)
-- [Coveralls](https://coveralls.io/r/gryphonshafer/Bible-OBML-Gateway)
+- [GitHub Actions](https://github.com/gryphonshafer/Bible-OBML-Gateway/actions)
+- [Codecov](https://codecov.io/gh/gryphonshafer/Bible-OBML-Gateway)
 - [CPANTS](http://cpants.cpanauthors.org/dist/Bible-OBML-Gateway)
 - [CPAN Testers](http://www.cpantesters.org/distro/B/Bible-OBML-Gateway.html)
 
@@ -107,7 +107,7 @@ Gryphon Shafer <gryphon@cpan.org>
 
 # COPYRIGHT AND LICENSE
 
-This software is copyright (c) 2020 by Gryphon Shafer.
+This software is copyright (c) 2021 by Gryphon Shafer.
 
 This is free software; you can redistribute it and/or modify it under
 the same terms as the Perl 5 programming language system itself.

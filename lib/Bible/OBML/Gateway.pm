@@ -1,7 +1,7 @@
 package Bible::OBML::Gateway;
 # ABSTRACT: Bible Gateway content conversion to Open Bible Markup Language (OBML)
 
-use 5.016;
+use 5.020;
 
 use exact;
 use exact::class;
@@ -11,7 +11,7 @@ use Mojo::File 'path';
 use Mojo::URL;
 use Mojo::UserAgent;
 use Bible::OBML 1.14;
-use Bible::Reference 1.04;
+use Bible::Reference 1.05;
 
 # VERSION
 
