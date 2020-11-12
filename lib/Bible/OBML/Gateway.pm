@@ -214,8 +214,8 @@ __END__
 =begin :badges
 
 =for markdown
-[![Build Status](https://travis-ci.org/gryphonshafer/Bible-OBML-Gateway.svg)](https://travis-ci.org/gryphonshafer/Bible-OBML-Gateway)
-[![Coverage Status](https://coveralls.io/repos/gryphonshafer/Bible-OBML-Gateway/badge.png)](https://coveralls.io/r/gryphonshafer/Bible-OBML-Gateway)
+[![build](https://github.com/gryphonshafer/Bible-OBML-Gateway/workflows/build/badge.svg)](https://github.com/gryphonshafer/Bible-OBML-Gateway/actions?query=workflow%3Abuild)
+[![codecov](https://codecov.io/gh/gryphonshafer/Bible-OBML-Gateway/graph/badge.svg)](https://codecov.io/gh/gryphonshafer/Bible-OBML-Gateway)
 
 =end :badges
 
@@ -307,8 +307,8 @@ You can also look for additional information at:
 =for :list
 * L<GitHub|https://github.com/gryphonshafer/Bible-OBML-Gateway>
 * L<MetaCPAN|https://metacpan.org/pod/Bible::OBML::Gateway>
-* L<Travis CI|https://travis-ci.org/gryphonshafer/Bible-OBML-Gateway>
-* L<Coveralls|https://coveralls.io/r/gryphonshafer/Bible-OBML-Gateway>
+* L<GitHub Actions|https://github.com/gryphonshafer/Bible-OBML-Gateway/actions>
+* L<Codecov|https://codecov.io/gh/gryphonshafer/Bible-OBML-Gateway>
 * L<CPANTS|http://cpants.cpanauthors.org/dist/Bible-OBML-Gateway>
 * L<CPAN Testers|http://www.cpantesters.org/distro/B/Bible-OBML-Gateway.html>
 
