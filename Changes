@@ -1,6 +1,7 @@
 Revision history for Bible::OBML::Gateway
 
 {{$NEXT}}
+        - Override some minimum version reqs in dist.ini
 
 1.11      2021-01-12 09:02:52-08:00 America/Los_Angeles
         - Migrate to Test2::V0
