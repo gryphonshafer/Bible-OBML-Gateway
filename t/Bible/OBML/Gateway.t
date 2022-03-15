@@ -8,7 +8,7 @@ isa_ok( $self, 'Bible::OBML::Gateway' );
 
 can_ok( $self, $_ ) for ( qw(
     translation url ua reference
-    translations structure get
+    translations structure fetch parse get
 ) );
 
 is( $self->translation, 'NIV', 'default translation' );
@@ -31,6 +31,7 @@ my $ua = mock( 'Mojo::UserAgent',
 is( $self->structure, { answer => 42 }, 'structure' );
 
 $ua->add(
+    body => sub { $_[0] },
     dom  => sub { $_[0] },
     find => sub { Mojo::Collection->new(
         mock( 'obj', set => [
@@ -59,7 +60,7 @@ like(
     'get() with invalid reference',
 );
 
-$ua->override( dom => sub { Mojo::DOM->new( join( '', <DATA> ) ) } );
+$ua->override( body => sub { Mojo::DOM->new( join( '', <DATA> ) ) } );
 
 my $obml = mock( 'Bible::OBML',
     set => [

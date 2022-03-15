@@ -7,8 +7,10 @@ use exact;
 use exact::class;
 use Bible::OBML;
 use Bible::Reference;
+use Mojo::DOM;
 use Mojo::UserAgent;
 use Mojo::URL;
+use Mojo::Util 'html_unescape';
 
 # VERSION
 
@@ -60,22 +62,25 @@ sub _retag ( $tag, $retag ) {
     delete $tag->attr->{$_} for ( keys %{ $tag->attr } );
 }
 
-sub get ( $self, $reference, $translation = $self->translation ) {
+sub fetch ( $self, $reference, $translation = $self->translation ) {
     my $runs = $self->reference->acronyms(0)->clear->in($reference)->as_runs;
     croak( '"' . $reference . '" not understood as a single chapter or single run of verses' )
         if ( @$runs != 1 or $runs->[0] !~ /\w\s*\d/ );
 
-    my $dom = $self->ua->get(
+    return $self->ua->get(
         $self->url->query( {
             version => $translation,
             search  => $runs->[0],
         } )
-    )->result->dom;
+    )->result->body;
+}
+
+sub parse ( $self, $html ) {
+    my $dom = Mojo::DOM->new($html);
 
     my $ref_display = $dom->at('div.dropdown-display-text');
-    croak('invalid search "' . $runs->[0] . '" under "' . $translation . '" translation' )
-        unless ( $ref_display and $ref_display->text );
-    $reference = $ref_display->text;
+    croak('source appears to be invalid; check your inputs') unless ( $ref_display and $ref_display->text );
+    my $reference = $ref_display->text;
 
     my $block = $dom->at('div.passage-text div.passage-content div:first-child');
 
@@ -192,7 +197,11 @@ sub get ( $self, $reference, $translation = $self->translation ) {
 
     $block->find('p')->each( sub { _retag( $_, 'p' ) } );
 
-    return Bible::OBML->new->html( $block->to_string );
+    return Bible::OBML->new->html( html_unescape( $block->to_string ) );
+}
+
+sub get ( $self, $reference, $translation = $self->translation ) {
+    return $self->parse( $self->fetch( $reference, $translation ) );
 }
 
 1;
@@ -248,10 +257,22 @@ You can optionally also provide an overriding translation. If not specified,
 the object's translation (set via the C<translation> attribute) will be used.
 
 The method will get the raw HTML content from Bible Gateway, parse it, and
-return a L<Bible::OBML> object loaded with the data;
+return a L<Bible::OBML> object loaded with the data.
 
     my $obml_obj = $bg->get( 'Romans 12' );
     print $bg->get( 'Romans 12', 'NASB' )->obml, "\n";
+
+Internally, all this method does is call C<fetch> and then C<parse>.
+
+=head2 fetch
+
+If all you want to do is fetch the HTML from Bible Gateway, you can use this
+method. It uses the same signature as C<get> and returns the returned HTML.
+
+=head2 parse
+
+This method requires source HTML, which it will then parse and return a
+L<Bible::OBML> object loaded with the data.
 
 =head2 translations
 
