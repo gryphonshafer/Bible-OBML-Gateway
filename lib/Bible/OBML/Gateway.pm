@@ -155,14 +155,20 @@ sub parse ( $self, $html ) {
                 $_->replace( join( '',
                     '<text>',
                     $_->find('td text')->map('content')->join(', '),
-                    ( ( $_->following_nodes->size ) ? ';</text><br>' : '.</text>' ),
+                    (
+                        ( $_->find('td text')->map('text')->last =~ /\W$/ ) ? ''  :
+                        ( $_->following_nodes->size                       ) ? '; ' : '.'
+                    ),
+                    ( ( $_->following_nodes->size ) ? '</text> ' : '</text>' ),
                 ) );
             }
         } );
+
         $_->tag('div');
-        $_->attr( class => 'indent-1' );
+        $_->attr( class => 'former_table' );
         $_->content( '<p>' . $_->content . '</p>' );
     } );
+    $block->find('div.former_table')->each('strip');
 
     $block->find( join( ', ', map { '.left-' . $_ } 1 .. 9 ) )->each( sub {
         my ($left) = $_->attr('class') =~ /\bleft\-(\d+)/;
