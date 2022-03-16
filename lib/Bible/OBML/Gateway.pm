@@ -165,10 +165,8 @@ sub parse ( $self, $html ) {
         } );
 
         $_->tag('div');
-        $_->attr( class => 'former_table' );
         $_->content( '<p>' . $_->content . '</p>' );
     } );
-    $block->find('div.former_table')->each('strip');
 
     $block->find( join( ', ', map { '.left-' . $_ } 1 .. 9 ) )->each( sub {
         my ($left) = $_->attr('class') =~ /\bleft\-(\d+)/;
@@ -202,6 +200,7 @@ sub parse ( $self, $html ) {
     } );
 
     $block->find('p')->each( sub { _retag( $_, 'p' ) } );
+    $block->find('div, span')->each('strip');
 
     return Bible::OBML->new->html( html_unescape( $block->to_string ) );
 }
