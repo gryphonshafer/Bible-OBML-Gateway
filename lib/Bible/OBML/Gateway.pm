@@ -1,7 +1,7 @@
 package Bible::OBML::Gateway;
 # ABSTRACT: Bible Gateway content conversion to Open Bible Markup Language (OBML)
 
-use 5.020;
+use 5.030;
 
 use exact;
 use exact::class;
@@ -64,8 +64,9 @@ sub _retag ( $tag, $retag ) {
 
 sub fetch ( $self, $reference, $translation = $self->translation ) {
     my $runs = $self->reference->acronyms(0)->clear->in($reference)->as_runs;
-    croak( '"' . $reference . '" not understood as a single chapter or single run of verses' )
-        if ( @$runs != 1 or $runs->[0] !~ /\w\s*\d/ );
+    croak(
+        '"' . ( $reference // '(undef)' ) . '" not understood as a single chapter or single run of verses'
+    ) if ( @$runs != 1 or $runs->[0] !~ /\w\s*\d/ );
 
     return $self->ua->get(
         $self->url->query( {
@@ -76,7 +77,7 @@ sub fetch ( $self, $reference, $translation = $self->translation ) {
 }
 
 sub parse ( $self, $html ) {
-    my $dom = Mojo::DOM->new($html);
+    my $dom = Mojo::DOM->new( $html // '' );
 
     my $ref_display = $dom->at('div.dropdown-display-text');
     croak('source appears to be invalid; check your inputs') unless ( $ref_display and $ref_display->text );
@@ -174,6 +175,8 @@ sub parse ( $self, $html ) {
         $_->strip;
     } );
 
+    $block->find('div.poetry')->each( sub { $_->attr( class => 'indent-1' ) } );
+
     $block->find( join( ', ', map { '.indent-' . $_ } 1 .. 9 ) )->each( sub {
         my ($indent) = $_->attr('class') =~ /\bindent\-(\d+)/;
         $_->find('text')->each( sub {
@@ -202,11 +205,11 @@ sub parse ( $self, $html ) {
     $block->find('p')->each( sub { _retag( $_, 'p' ) } );
     $block->find('div, span')->each('strip');
 
-    return Bible::OBML->new->html( html_unescape( $block->to_string ) );
+    return html_unescape( $block->to_string );
 }
 
 sub get ( $self, $reference, $translation = $self->translation ) {
-    return $self->parse( $self->fetch( $reference, $translation ) );
+    return Bible::OBML->new->html( $self->parse( $self->fetch( $reference, $translation ) ) );
 }
 
 1;
@@ -267,17 +270,20 @@ return a L<Bible::OBML> object loaded with the data.
     my $obml_obj = $bg->get( 'Romans 12' );
     print $bg->get( 'Romans 12', 'NASB' )->obml, "\n";
 
-Internally, all this method does is call C<fetch> and then C<parse>.
+Internally, all this method does is call C<fetch>, pass that output to C<parse>,
+and then load output that into a new L<Bible::OBML> object.
 
 =head2 fetch
 
 If all you want to do is fetch the HTML from Bible Gateway, you can use this
-method. It uses the same signature as C<get> and returns the returned HTML.
+method. It uses the same signature as C<get> and returns the returned raw HTML.
 
 =head2 parse
 
-This method requires source HTML, which it will then parse and return a
-L<Bible::OBML> object loaded with the data.
+This method requires source HTML like what you might get from a C<fetch> call,
+which it will then parse and return a special sort of HTML that can be loaded
+directly into a L<Bible::OBML> object via it's C<html> method. (See
+L<Bible::OBML> for more information.)
 
 =head2 translations
 
@@ -335,6 +341,12 @@ This a simplified example of the data structure:
     ]
 
 =head1 ATTRIBUTES
+
+Attributes can be set in a call to C<new> or explicitly as a get/set method.
+
+    my $bg = Bible::OBML::Gateway->new( translation => 'NIV' );
+    $bg->translation('NIV');
+    say $bg->translation;
 
 =head2 translation
 

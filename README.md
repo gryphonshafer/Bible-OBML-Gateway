@@ -4,7 +4,7 @@ Bible::OBML::Gateway - Bible Gateway content conversion to Open Bible Markup Lan
 
 # VERSION
 
-version 1.12
+version 2.01
 
 [![test](https://github.com/gryphonshafer/Bible-OBML-Gateway/workflows/test/badge.svg)](https://github.com/gryphonshafer/Bible-OBML-Gateway/actions?query=workflow%3Atest)
 [![codecov](https://codecov.io/gh/gryphonshafer/Bible-OBML-Gateway/graph/badge.svg)](https://codecov.io/gh/gryphonshafer/Bible-OBML-Gateway)
@@ -16,17 +16,17 @@ version 1.12
     my $bg = Bible::OBML::Gateway->new;
     $bg->translation('NIV');
 
-    my $obml = $bg->get( 'Romans 12', 'NIV' )->obml;
-    my $data = $bg->get( 'Romans 12' )->data;
-    my $html = $bg->get('Romans 12')->html;
+    my $obml_obj = $bg->get( 'Romans 12' );
+    print $bg->get( 'Romans 12', 'NASB' )->obml, "\n";
 
-    $bg->get( 'Romans 12', 'NIV' )->save('Romans_12_NIV.html');
-    say $bg->load('Romans_12_NIV.html')->obml;
+    my $translations = $bg->translations;
+    my $structure    = $bg->structure('NASB');
 
 # DESCRIPTION
 
-This module consumes Bible Gateway content and converts it to Open Bible Markup
-Language (OBML).
+This module consumes Bible Gateway content and returns useful data-bearing
+objects or data structures. In the common case, it will accept a Bible reference
+and return a [Bible::OBML](https://metacpan.org/pod/Bible%3A%3AOBML) object loaded with parsed content.
 
 # METHODS
 
@@ -39,58 +39,133 @@ acronym to be used on subsequent requests.
 
     my $bg = Bible::OBML::Gateway->new( translation => 'NIV' );
 
+## get
+
+This method requires a text input containing a Bible reference that can be
+understood as a single chapter or single, unbroken run of verses. For example,
+"Romans 12" or "Ro 12:13-17" are acceptable, but "Romans 12:13-17, 19" is not.
+
+You can optionally also provide an overriding translation. If not specified,
+the object's translation (set via the `translation` attribute) will be used.
+
+The method will get the raw HTML content from Bible Gateway, parse it, and
+return a [Bible::OBML](https://metacpan.org/pod/Bible%3A%3AOBML) object loaded with the data.
+
+    my $obml_obj = $bg->get( 'Romans 12' );
+    print $bg->get( 'Romans 12', 'NASB' )->obml, "\n";
+
+Internally, all this method does is call `fetch`, pass that output to `parse`,
+and then load output that into a new [Bible::OBML](https://metacpan.org/pod/Bible%3A%3AOBML) object.
+
+## fetch
+
+If all you want to do is fetch the HTML from Bible Gateway, you can use this
+method. It uses the same signature as `get` and returns the returned raw HTML.
+
+## parse
+
+This method requires source HTML like what you might get from a `fetch` call,
+which it will then parse and return a special sort of HTML that can be loaded
+directly into a [Bible::OBML](https://metacpan.org/pod/Bible%3A%3AOBML) object via it's `html` method. (See
+[Bible::OBML](https://metacpan.org/pod/Bible%3A%3AOBML) for more information.)
+
+## translations
+
+This method will return a data structure consisting of data describing available
+translations on Bible Gateway per spoken language. It returns an arrayref
+containing a hashref per language. Each hashref contains an arrayref of
+translations, each represented by a hashref.
+
+    my $translations = $bg->translations;
+
+This a simplified example of the data structure:
+
+    [
+        {
+            acronym      => 'EN',
+            language     => 'English',
+            translations => [
+                {
+                    acronym     => 'NIV',
+                    translation => 'New International Version',
+                },
+            ],
+        },
+    ]
+
+## structure
+
+This method will return a data structure consisting of data describing the
+structure of a given translation of the Bible from Bible Gateway. It can
+optionally be provided an overriding translation. If not specified, the object's
+translation (set via the `translation` attribute) will be used. The data
+structure returned is an arrayref of hashrefs, each representing a book.
+
+    my $structure = $bg->structure('NASB');
+
+This a simplified example of the data structure:
+
+    [
+        {
+            testament    =>  'NT',
+            display      =>  '2 John',
+            osis         =>  '2John',
+            intro        =>  0,
+            num_chapters =>  1,
+            chapters     =>  [
+                {
+                    chapter => 1,
+                    type    => 'heading',
+                    content => [
+                        "Walk According to His Commandments",
+                    ],
+                },
+            ],
+        }
+    ]
+
+# ATTRIBUTES
+
+Attributes can be set in a call to `new` or explicitly as a get/set method.
+
+    my $bg = Bible::OBML::Gateway->new( translation => 'NIV' );
+    $bg->translation('NIV');
+    say $bg->translation;
+
 ## translation
 
-Get or set the current translation acronym.
+Get or set the current translation acronym. The default if not explicitly set
+will be "NIV".
 
     say $bg->translation;
     $bg->translation('NIV');
 
-## get
+## url
 
-Gets the raw HTML content for a given chapter represented by book, chapter,
-and translation. The book and chapter can be combined with a space. The
-translation if provided will override the translation set in the object.
+This provides access to the base URL, contained within a [Mojo::URL](https://metacpan.org/pod/Mojo%3A%3AURL) object.
 
-    $bg->get( 'Romans 12', 'NIV' );
-    $bg->get('Romans 12');
+    $bg->url( Mojo::URL->new('https://www.biblegateway.com/passage/') );
 
-## obml
+## ua
 
-Parses the previously `get()`-ed raw HTML if it hasn't been parsed yet and
-returns Open Bible Markup Language (OBML) using [Bible::OBML](https://metacpan.org/pod/Bible%3A%3AOBML).
+This provides access to the [Mojo::UserAgent](https://metacpan.org/pod/Mojo%3A%3AUserAgent) user agent.
 
-    my $obml = $bg->get('Romans 12')->obml;
+    $bg->ua->transactor->name("Your Application's Name");
 
-## data
+## reference
 
-Parses the previously `get()`-ed raw HTML if it hasn't been parsed yet and
-returns a data structure of content that could be passed into [Bible::OBML](https://metacpan.org/pod/Bible%3A%3AOBML)'s
-`render()` method.
+This provides access to the [Bible::Reference](https://metacpan.org/pod/Bible%3A%3AReference) object used to parse and
+canonicalize Bible references.
 
-    my $data = $bg->get('Romans 12')->data;
+    $bg->reference->bible('Catholic');
 
-## html
-
-Returns the previously `get()`-ed raw HTML.
-
-    my $html = $bg->get('Romans 12')->html;
-
-## save
-
-Saves the previously `get()`-ed raw HTML to a file.
-
-    $bg->get('Romans 12')->save('Romans_12_NIV.html');
-
-## load
-
-Loads raw HTML from a file.
-
-    say $bg->load('Romans_12_NIV.html')->obml;
+Depending on which translation you `get` from Bible Gateway, you may need to
+alter the `bible` setting of `reference`, as in the example immediately above.
+By default, `bible` is set to "Protestant".
 
 # SEE ALSO
 
-[Bible::OBML](https://metacpan.org/pod/Bible%3A%3AOBML), [Bible::OBML::HTML](https://metacpan.org/pod/Bible%3A%3AOBML%3A%3AHTML), [Bible::Reference](https://metacpan.org/pod/Bible%3A%3AReference).
+[Bible::OBML](https://metacpan.org/pod/Bible%3A%3AOBML), [Bible::Reference](https://metacpan.org/pod/Bible%3A%3AReference), [Mojo::URL](https://metacpan.org/pod/Mojo%3A%3AURL), [Mojo::UserAgent](https://metacpan.org/pod/Mojo%3A%3AUserAgent).
 
 You can also look for additional information at:
 
