@@ -1,6 +1,6 @@
 # NAME
 
-Bible::OBML::Gateway - Bible Gateway content conversion to Open Bible Markup Language (OBML)
+Bible::OBML::Gateway - Bible Gateway content conversion to Open Bible Markup Language
 
 # VERSION
 

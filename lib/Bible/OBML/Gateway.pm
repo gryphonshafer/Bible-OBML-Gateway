@@ -1,5 +1,5 @@
 package Bible::OBML::Gateway;
-# ABSTRACT: Bible Gateway content conversion to Open Bible Markup Language (OBML)
+# ABSTRACT: Bible Gateway content conversion to Open Bible Markup Language
 
 use 5.030;
 
