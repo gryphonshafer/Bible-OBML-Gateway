@@ -1,7 +1,7 @@
 package Bible::OBML::Gateway;
 # ABSTRACT: Bible Gateway content conversion to Open Bible Markup Language
 
-use 5.030;
+use 5.020;
 
 use exact;
 use exact::class;

@@ -2,22 +2,22 @@
 use strict;
 use warnings;
 
-use 5.030;
+use 5.020;
 
 use ExtUtils::MakeMaker;
 
 my %WriteMakefileArgs = (
-  "ABSTRACT" => "Bible Gateway content conversion to Open Bible Markup Language (OBML)",
+  "ABSTRACT" => "Bible Gateway content conversion to Open Bible Markup Language",
   "AUTHOR" => "Gryphon Shafer <gryphon\@cpan.org>",
   "CONFIGURE_REQUIRES" => {
     "ExtUtils::MakeMaker" => 0
   },
   "DISTNAME" => "Bible-OBML-Gateway",
   "LICENSE" => "artistic_2",
-  "MIN_PERL_VERSION" => "5.030",
+  "MIN_PERL_VERSION" => "5.020",
   "NAME" => "Bible::OBML::Gateway",
   "PREREQ_PM" => {
-    "Bible::OBML" => "2.02",
+    "Bible::OBML" => "2.03",
     "Bible::Reference" => "1.08",
     "Mojo::DOM" => 0,
     "Mojo::URL" => 0,
@@ -36,7 +36,7 @@ my %WriteMakefileArgs = (
     "strict" => 0,
     "warnings" => 0
   },
-  "VERSION" => "2.01",
+  "VERSION" => "2.02",
   "test" => {
     "TESTS" => "t/*.t t/Bible/OBML/*.t"
   }
@@ -44,7 +44,7 @@ my %WriteMakefileArgs = (
 
 
 my %FallbackPrereqs = (
-  "Bible::OBML" => "2.02",
+  "Bible::OBML" => "2.03",
   "Bible::Reference" => "1.08",
   "File::Spec" => 0,
   "IO::Handle" => 0,
