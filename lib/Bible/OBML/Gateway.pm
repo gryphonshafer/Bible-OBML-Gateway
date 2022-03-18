@@ -89,7 +89,7 @@ sub parse ( $self, $html ) {
     $block
         ->find('.il-text, hidden, hr, .translation-note, span.inline-note, a.full-chap-link')
         ->each('remove');
-    $block->find('.std-text')->each('strip');
+    $block->find('.std-text, hgroup, selah, b')->each('strip');
 
     $block->find('i, .italic, .trans-change, .idiom, .catch-word')->each( sub { _retag( $_, 'i' ) } );
     $block->find('.woj')->each( sub { _retag( $_, 'woj' ) } );
@@ -97,6 +97,10 @@ sub parse ( $self, $html ) {
 
     my $footnotes = $block->at('div.footnotes');
     if ($footnotes) {
+        $footnotes->find('a.bibleref')->each( sub {
+            ( my $ref = $_->attr('data-bibleref') ) =~ s/(\d)\.(\d)/$1:$2/;
+            $_->replace($ref);
+        } );
         $footnotes->remove;
         $footnotes = {
             map {
@@ -131,7 +135,7 @@ sub parse ( $self, $html ) {
     _retag( $block, 'obml' );
     $block->child_nodes->first->prepend( $block->new_tag( 'reference', $reference ) );
 
-    $block->find('h3')->each( sub { _retag( $_, 'header' ) } );
+    $block->find('h2, h3')->each( sub { _retag( $_, 'header' ) } );
     $block->find('h4')->each( sub { _retag( $_, 'sub_header' ) } );
 
     $block->find('.chapternum')->each( sub {
