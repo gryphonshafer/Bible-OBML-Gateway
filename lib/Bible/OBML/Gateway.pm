@@ -132,7 +132,7 @@ sub parse ( $self, $html ) {
     $block->child_nodes->first->prepend( $block->new_tag( 'reference', $reference ) );
 
     $block->find('h3')->each( sub { _retag( $_, 'header' ) } );
-    $block->find('h4')->each( sub { _retag( $_, 'header_alt' ) } );
+    $block->find('h4')->each( sub { _retag( $_, 'sub_header' ) } );
 
     $block->find('.chapternum')->each( sub {
         _retag( $_, 'verse_number' );
