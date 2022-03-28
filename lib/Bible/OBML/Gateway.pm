@@ -78,8 +78,10 @@ sub fetch ( $self, $reference, $translation = $self->translation ) {
 
 sub parse ( $self, $html ) {
     $html = $html // '';
-    $html =~ s|<sup>(\d+)</sup>.<sub>(\d+)</sub>|$1/$2|g;
-    $html =~ s|(?:&lt;)+(.*?)\x{2019}?(?:&gt;)+|\x{201c}$1\x{201d}|g;
+    $html =~ s`<sup>(\d+)</sup>.<sub>(\d+)</sub>`$1/$2`g;
+    $html =~ s`(?:&lt;){2,}(.*?)(?:\x{2019}&gt;|(?:&gt;){2,})`\x{201c}$1\x{201d}`g;
+    $html =~ s`(?:&lt;)(.*?)(?:&gt;|\x{2019})`\x{2018}$1\x{2019}`g;
+    $html =~ s`\\\w+``g;
 
     my $dom = Mojo::DOM->new($html);
 
@@ -196,6 +198,8 @@ sub parse ( $self, $html ) {
             );
         }
     } );
+
+    $block->find('footnote, crossref')->each( sub { _retag( $_, $_->tag ) } );
 
     _retag( $block, 'obml' );
     $block->child_nodes->first->prepend( $block->new_tag( 'reference', $reference ) );
