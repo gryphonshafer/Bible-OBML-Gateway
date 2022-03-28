@@ -63,7 +63,7 @@ sub _retag ( $tag, $retag ) {
 }
 
 sub fetch ( $self, $reference, $translation = $self->translation ) {
-    my $runs = $self->reference->acronyms(0)->clear->in($reference)->as_runs;
+    my $runs = $self->reference->require_verse_match(0)->acronyms(0)->clear->in($reference)->as_runs;
     croak(
         '"' . ( $reference // '(undef)' ) . '" not understood as a single chapter or single run of verses'
     ) if ( @$runs != 1 or $runs->[0] !~ /\w\s*\d/ );
@@ -77,11 +77,18 @@ sub fetch ( $self, $reference, $translation = $self->translation ) {
 }
 
 sub parse ( $self, $html ) {
-    my $dom = Mojo::DOM->new( $html // '' );
+    $html = $html // '';
+    $html =~ s|<sup>(\d+)</sup>.<sub>(\d+)</sub>|$1/$2|g;
+    $html =~ s|(?:&lt;)+(.*?)\x{2019}?(?:&gt;)+|\x{201c}$1\x{201d}|g;
 
-    my $ref_display = $dom->at('div.dropdown-display-text');
+    my $dom = Mojo::DOM->new($html);
+
+    my $ref_display = $dom->at('div.bcv div.dropdown-display-text');
     croak('source appears to be invalid; check your inputs') unless ( $ref_display and $ref_display->text );
     my $reference = $ref_display->text;
+
+    croak('EXB (Extended Bible) translation not supported')
+        if ( $dom->at('div.translation div.dropdown-display-text')->text eq 'Expanded Bible' );
 
     my $block = $dom->at('div.passage-text div.passage-content div:first-child');
 
@@ -89,11 +96,18 @@ sub parse ( $self, $html ) {
     $block
         ->find('.il-text, hidden, hr, .translation-note, span.inline-note, a.full-chap-link')
         ->each('remove');
-    $block->find('.std-text, hgroup, selah, b')->each('strip');
+    $block->find('.std-text, hgroup, selah, b, em, versenum')->each('strip');
 
     $block->find('i, .italic, .trans-change, .idiom, .catch-word')->each( sub { _retag( $_, 'i' ) } );
-    $block->find('.woj')->each( sub { _retag( $_, 'woj' ) } );
+    $block->find('.woj, u.jesus-speech')->each( sub { _retag( $_, 'woj' ) } );
     $block->find('.divine-name, .small-caps')->each( sub { _retag( $_, 'small_caps' ) } );
+
+    $block->find('sup')->grep( sub { length $_->text == 1 } )->each( sub {
+        $_->content( '-' . $_->content );
+        $_->strip;
+    } );
+
+    $self->reference->require_verse_match(1)->acronyms(1);
 
     my $footnotes = $block->at('div.footnotes');
     if ($footnotes) {
@@ -104,8 +118,8 @@ sub parse ( $self, $html ) {
         $footnotes->remove;
         $footnotes = {
             map {
-                '#' . $_->attr('id') => $self->reference->acronyms(1)->clear->in(
-                    $_->at('span')->content
+                '#' . $_->attr('id') => $self->reference->clear->in(
+                    $_->at('span')->all_text
                 )->as_text
             } $footnotes->find('ol li')->each
         };
@@ -113,22 +127,73 @@ sub parse ( $self, $html ) {
 
     my $crossrefs = $block->at('div.crossrefs');
     if ($crossrefs) {
+        $crossrefs->find('a.bibleref')->each( sub {
+            ( my $ref = $_->attr('data-bibleref') ) =~ s/(\d)\.(\d)/$1:$2/;
+            $_->replace($ref);
+        } );
         $crossrefs->remove;
         $crossrefs = {
             map {
-                '#' . $_->attr('id') => $self->reference->acronyms(1)->clear->in(
+                '#' . $_->attr('id') => $self->reference->clear->in(
                     $_->at('a:last-child')->attr('data-bibleref')
                 )->refs
             } $crossrefs->find('ol li')->each
         };
     }
 
+    $block
+        ->find('span.text > a.bibleref')
+        ->map('parent')
+        ->grep( sub { $_->content =~ /^\[<a/ } )
+        ->each( sub {
+            $_->find('a')->each( sub {
+                ( my $ref = $_->attr('data-bibleref') ) =~ s/(\d)\.(\d)/$1:$2/;
+                $_->replace($ref);
+            } );
+
+            my $content = $_->content;
+            $content =~ s|\s+\[([^\]]+)\]|
+                '<footnote>' . $self->reference->clear->in($1)->as_text . '</footnote>'
+            |ge;
+
+            $_->content($content);
+        } );
+
+    $block
+        ->find('i > a.bibleref, crossref > a.bibleref')
+        ->map('parent')
+        ->grep( sub { $_->children->size == 1 } )
+        ->each( sub {
+            my $a = $_->at('a:last-child');
+            ( my $ref = $a->attr('data-bibleref') ) =~ s/(\d)\.(\d)/$1:$2/;
+
+            $_->tag('sup');
+            $_->attr({
+                'class'   => 'crossreference',
+                'data-cr' => $a->attr('data-bibleref'),
+            });
+
+            $crossrefs = {
+                $a->attr('data-bibleref') => $self->reference->clear->in($ref)->refs
+            };
+        } );
+
+    $block->find('a.bibleref')->each('strip');
+
     $block->find('sup.crossreference, sup.footnote')->each( sub {
         if ( $_->attr('class') eq 'footnote' ) {
-            $_->replace( '<footnote>' . $footnotes->{ $_->attr('data-fn') } . '</footnote>' );
+            $_->replace(
+                ( $footnotes->{ $_->attr('data-fn') } )
+                    ? '<footnote>' . $footnotes->{ $_->attr('data-fn') } . '</footnote>'
+                    : ''
+            );
         }
         elsif ( $_->attr('class') eq 'crossreference' ) {
-            $_->replace( '<crossref>' . $crossrefs->{ $_->attr('data-cr') } . '</crossref>' );
+            $_->replace(
+                ( $crossrefs->{ $_->attr('data-cr') } )
+                    ? '<crossref>' . $crossrefs->{ $_->attr('data-cr') } . '</crossref>'
+                    : ''
+            );
         }
     } );
 
@@ -137,6 +202,8 @@ sub parse ( $self, $html ) {
 
     $block->find('h2, h3')->each( sub { _retag( $_, 'header' ) } );
     $block->find('h4')->each( sub { _retag( $_, 'sub_header' ) } );
+
+    $block->find('.chapternum + .versenum')->each( sub { $_->previous->remove } );
 
     $block->find('.chapternum')->each( sub {
         _retag( $_, 'verse_number' );
@@ -170,6 +237,18 @@ sub parse ( $self, $html ) {
         } );
 
         $_->tag('div');
+        $_->content( '<p>' . $_->content . '</p>' );
+    } );
+
+    $block->find('ul, ol')->each( sub {
+        $_->find('li')->each( sub {
+            $_->tag('text');
+            $_->find('text > text')->each('strip');
+            $_->append_content('<br>') if ( $_->next and $_->next->tag eq 'li' );
+        } );
+
+        $_->tag('div');
+        $_->attr( class => 'left-1' );
         $_->content( '<p>' . $_->content . '</p>' );
     } );
 
@@ -207,7 +286,7 @@ sub parse ( $self, $html ) {
     } );
 
     $block->find('p')->each( sub { _retag( $_, 'p' ) } );
-    $block->find('div, span')->each('strip');
+    $block->find('div, span, u, sup, bk')->each('strip');
 
     return html_unescape( $block->to_string );
 }
