@@ -77,11 +77,7 @@ sub fetch ( $self, $reference, $translation = $self->translation ) {
 }
 
 sub parse ( $self, $html ) {
-    $html = $html // '';
-    $html =~ s`<sup>(\d+)</sup>.<sub>(\d+)</sub>`$1/$2`g;
-    $html =~ s`(?:&lt;){2,}(.*?)(?:\x{2019}&gt;|(?:&gt;){2,})`\x{201c}$1\x{201d}`g;
-    $html =~ s`(?:&lt;)(.*?)(?:&gt;|\x{2019})`\x{2018}$1\x{2019}`g;
-    $html =~ s`\\\w+``g;
+    return unless ($html);
 
     my $dom = Mojo::DOM->new($html);
 
@@ -93,6 +89,16 @@ sub parse ( $self, $html ) {
         if ( $dom->at('div.translation div.dropdown-display-text')->text eq 'Expanded Bible' );
 
     my $block = $dom->at('div.passage-text div.passage-content div:first-child');
+    $block->find('*[data-link]')->each( sub { delete $_->attr->{'data-link'} } );
+
+    $html = $block->to_string;
+
+    $html =~ s`<sup>(\d+)</sup>.<sub>(\d+)</sub>`$1/$2`g;
+    $html =~ s`(?:&lt;){2,}(.*?)(?:\x{2019}&gt;|(?:&gt;){2,})`\x{201c}$1\x{201d}`g;
+    $html =~ s`(?:&lt;)(.*?)(?:&gt;|\x{2019})`\x{2018}$1\x{2019}`g;
+    $html =~ s`\\\w+``g;
+
+    $block = Mojo::DOM->new($html)->at('div');
 
     $block->descendant_nodes->grep( sub { $_->type eq 'comment' } )->each('remove');
     $block
@@ -263,7 +269,6 @@ sub parse ( $self, $html ) {
     } );
 
     $block->find('div.poetry')->each( sub { $_->attr( class => 'indent-1' ) } );
-
     $block->find( join( ', ', map { '.indent-' . $_ } 1 .. 9 ) )->each( sub {
         my ($indent) = $_->attr('class') =~ /\bindent\-(\d+)/;
         $_->find('text')->each( sub {
