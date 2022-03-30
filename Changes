@@ -1,6 +1,8 @@
 Revision history for Bible::OBML::Gateway
 
 {{$NEXT}}
+
+2.03      2022-03-30 09:02:46-07:00 America/Los_Angeles
         - Eliminate data-link prior to global regex-ing
         - Greater/lesser-than used as quotes fix
         - Remove hgroup, selah, b; clean footnote ref links
