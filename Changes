@@ -1,6 +1,7 @@
 Revision history for Bible::OBML::Gateway
 
 {{$NEXT}}
+        - b.inline-h3 filter and patch missing initial verse number
 
 2.03      2022-03-30 09:02:46-07:00 America/Los_Angeles
         - Eliminate data-link prior to global regex-ing

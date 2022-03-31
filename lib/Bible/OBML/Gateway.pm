@@ -102,7 +102,7 @@ sub parse ( $self, $html ) {
 
     $block->descendant_nodes->grep( sub { $_->type eq 'comment' } )->each('remove');
     $block
-        ->find('.il-text, hidden, hr, .translation-note, span.inline-note, a.full-chap-link')
+        ->find('.il-text, hidden, hr, .translation-note, span.inline-note, a.full-chap-link, b.inline-h3')
         ->each('remove');
     $block->find('.std-text, hgroup, selah, b, em, versenum')->each('strip');
 
@@ -120,7 +120,7 @@ sub parse ( $self, $html ) {
     my $footnotes = $block->at('div.footnotes');
     if ($footnotes) {
         $footnotes->find('a.bibleref')->each( sub {
-            ( my $ref = $_->attr('data-bibleref') ) =~ s/(\d)\.(\d)/$1:$2/;
+            ( my $ref = $_->attr('data-bibleref') // '' ) =~ s/\.(\d+)\.(\d+)/ $1:$2/g;
             $_->replace($ref);
         } );
         $footnotes->remove;
@@ -136,7 +136,7 @@ sub parse ( $self, $html ) {
     my $crossrefs = $block->at('div.crossrefs');
     if ($crossrefs) {
         $crossrefs->find('a.bibleref')->each( sub {
-            ( my $ref = $_->attr('data-bibleref') ) =~ s/(\d)\.(\d)/$1:$2/;
+            ( my $ref = $_->attr('data-bibleref') // '' ) =~ s/\.(\d+)\.(\d+)/ $1:$2/g;
             $_->replace($ref);
         } );
         $crossrefs->remove;
@@ -155,7 +155,7 @@ sub parse ( $self, $html ) {
         ->grep( sub { $_->content =~ /^\[<a/ } )
         ->each( sub {
             $_->find('a')->each( sub {
-                ( my $ref = $_->attr('data-bibleref') ) =~ s/(\d)\.(\d)/$1:$2/;
+                ( my $ref = $_->attr('data-bibleref') // '' ) =~ s/\.(\d+)\.(\d+)/ $1:$2/g;
                 $_->replace($ref);
             } );
 
@@ -173,7 +173,7 @@ sub parse ( $self, $html ) {
         ->grep( sub { $_->children->size == 1 } )
         ->each( sub {
             my $a = $_->at('a:last-child');
-            ( my $ref = $a->attr('data-bibleref') ) =~ s/(\d)\.(\d)/$1:$2/;
+            ( my $ref = $_->attr('data-bibleref') // '' ) =~ s/\.(\d+)\.(\d+)/ $1:$2/g;
 
             $_->tag('sup');
             $_->attr({
@@ -295,6 +295,10 @@ sub parse ( $self, $html ) {
     } );
 
     $block->find('p')->each( sub { _retag( $_, 'p' ) } );
+
+    $block->at('p')->prepend_content('<verse_number>1</verse_number>')
+        if ( $block->at('p') and not $block->at('p')->at('verse_number') );
+
     $block->find('div, span, u, sup, bk')->each('strip');
 
     return html_unescape( $block->to_string );
