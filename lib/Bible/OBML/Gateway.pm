@@ -101,16 +101,20 @@ sub parse ( $self, $html ) {
     $html =~ s`(?:&lt;){2,}(.*?)(?:\x{2019}&gt;|(?:&gt;){2,})`\x{201c}$1\x{201d}`g;
     $html =~ s`(?:&lt;)(.*?)(?:&gt;|\x{2019})`\x{2018}$1\x{2019}`g;
     $html =~ s`\\\w+``g;
+    $html =~ s/(?:\.\s*){2,}\./\x{2026}/;
 
     $block = Mojo::DOM->new($html)->at('div');
+
+    $_->parent->strip if ( $_ = $block->find('div.poetry > h2')->first );
 
     $block->descendant_nodes->grep( sub { $_->type eq 'comment' } )->each('remove');
     $block
         ->find('.il-text, hidden, hr, .translation-note, span.inline-note, a.full-chap-link, b.inline-h3')
         ->each('remove');
-    $block->find('.std-text, hgroup, selah, b, em, versenum')->each('strip');
-
-    $block->find('i, .italic, .trans-change, .idiom, .catch-word')->each( sub { _retag( $_, 'i' ) } );
+    $block->find('.std-text, hgroup, b, em, versenum')->each('strip');
+    $block
+        ->find('i, .italic, .trans-change, .idiom, .catch-word, selah, span.selah')
+        ->each( sub { _retag( $_, 'i' ) } );
     $block->find('.woj, u.jesus-speech')->each( sub { _retag( $_, 'woj' ) } );
     $block->find('.divine-name, .small-caps')->each( sub { _retag( $_, 'small_caps' ) } );
 
@@ -214,10 +218,14 @@ sub parse ( $self, $html ) {
     _retag( $block, 'obml' );
     $block->child_nodes->first->prepend( $block->new_tag( 'reference', $reference ) );
 
+    $block->find('h3.chapter')->each('remove');
+    $block->find('h2 + h3')->each( sub { $_->tag('h4') } );
     $block->find('h2, h3')->each( sub { _retag( $_, 'header' ) } );
     $block->find('h4')->each( sub { _retag( $_, 'sub_header' ) } );
 
+    $block->find('.versenum')->grep( sub { $_->text =~ /^\s*\(/ } )->each('remove');
     $block->find('.chapternum + .versenum')->each( sub { $_->previous->remove } );
+    $block->find('.chapternum + i > .versenum')->each( sub { $_->parent->previous->remove } );
 
     $block->find('.chapternum')->each( sub {
         _retag( $_, 'verse_number' );
@@ -225,7 +233,11 @@ sub parse ( $self, $html ) {
     } );
     $block->find('.versenum')->each( sub {
         _retag( $_, 'verse_number' );
-        my ($verse_number) = $_->content =~ /(\d+)/;
+
+        my $verse_number = $_->content;
+        $verse_number =~ s/^.*://g;
+        ($verse_number) = $verse_number =~ /(\d+)/;
+
         $_->content($verse_number);
     } );
 
@@ -276,8 +288,7 @@ sub parse ( $self, $html ) {
     $block->find( join( ', ', map { '.indent-' . $_ } 1 .. 9 ) )->each( sub {
         my ($indent) = $_->attr('class') =~ /\bindent\-(\d+)/;
         $_->find('text')->each( sub {
-            $indent += $_->attr('indent') || 0;
-            $_->attr( indent => $indent );
+            $_->attr( indent => $indent + ( $_->attr('indent') || 0 ) );
         } );
         $_->strip;
     } );
@@ -305,7 +316,10 @@ sub parse ( $self, $html ) {
 
     $block->find('div, span, u, sup, bk')->each('strip');
 
-    return html_unescape( $block->to_string );
+    $html = html_unescape( $block->to_string );
+    $html =~ s/<p>[ ]+/<p>/;
+
+    return $html;
 }
 
 sub get ( $self, $reference, $translation = $self->translation ) {
