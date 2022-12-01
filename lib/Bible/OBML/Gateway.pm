@@ -7,6 +7,7 @@ use exact;
 use exact::class;
 use Bible::OBML;
 use Bible::Reference;
+use Mojo::ByteStream;
 use Mojo::DOM;
 use Mojo::UserAgent;
 use Mojo::URL;
@@ -64,16 +65,19 @@ sub _retag ( $tag, $retag ) {
 
 sub fetch ( $self, $reference, $translation = $self->translation ) {
     my $runs = $self->reference->require_verse_match(0)->acronyms(0)->clear->in($reference)->as_runs;
-    croak(
-        '"' . ( $reference // '(undef)' ) . '" not understood as a single chapter or single run of verses'
-    ) if ( @$runs != 1 or $runs->[0] !~ /\w\s*\d/ );
+    $reference = $runs->[0] unless ( @$runs != 1 or $runs->[0] !~ /\w\s*\d/ );
 
-    return $self->ua->get(
+    my $result = $self->ua->get(
         $self->url->query( {
             version => $translation,
-            search  => $runs->[0],
+            search  => $reference,
         } )
-    )->result->body;
+    )->result;
+
+    croak( $translation . ' "' . ( $reference // '(undef)' ) . '" did not match a chapter or run of verses' )
+        if ( $result->dom->at('div.content-section') );
+
+    return Mojo::ByteStream->new( $result->body )->decode->to_string;
 }
 
 sub parse ( $self, $html ) {

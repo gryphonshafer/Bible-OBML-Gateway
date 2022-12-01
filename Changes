@@ -1,6 +1,7 @@
 Revision history for Bible::OBML::Gateway
 
 {{$NEXT}}
+        - fetch() will attempt references that fail a Bible::Reference check
 
 2.04      2022-03-30 18:03:00-07:00 America/Los_Angeles
         - b.inline-h3 filter and patch missing initial verse number
