@@ -278,7 +278,7 @@ sub parse ( $self, $html ) {
         $_->content( '<p>' . $_->content . '</p>' );
     } );
 
-    $block->find( join( ', ', map { '.left-' . $_ } 1 .. 9 ) )->each( sub {
+    $block->find( join( ', ', map { 'div.left-' . $_ } 1 .. 9 ) )->each( sub {
         my ($left) = $_->attr('class') =~ /\bleft\-(\d+)/;
         $_->find('text')->each( sub { $_->attr( indent => $left ) } );
         $_->strip;
@@ -317,7 +317,7 @@ sub parse ( $self, $html ) {
     $block->find('div, span, u, sup, bk')->each('strip');
 
     $html = html_unescape( $block->to_string );
-    $html =~ s/<p>[ ]+/<p>/;
+    $html =~ s/<p>[ ]+/<p>/g;
 
     return $html;
 }
