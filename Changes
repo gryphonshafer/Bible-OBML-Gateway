@@ -1,6 +1,7 @@
 Revision history for Bible::OBML::Gateway
 
 {{$NEXT}}
+        - Minor parse additions to solve for CEV edge cases
 
 2.05      2022-12-05 10:20:44-08:00 America/Los_Angeles
         - fetch() will attempt references that fail a Bible::Reference check
