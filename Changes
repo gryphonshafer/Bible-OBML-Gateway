@@ -1,6 +1,8 @@
 Revision history for Bible::OBML::Gateway
 
 {{$NEXT}}
+        - Several parse patches for edge-cases and Gateway source errors
+        - Leverage Bible::Reference's require_chapter_match
 
 2.06      2022-12-07 10:49:01-08:00 America/Los_Angeles
         - Minor parse additions to solve for CEV edge cases
