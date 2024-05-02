@@ -352,6 +352,9 @@ sub parse ( $self, $html ) {
     $html =~ s/([A-z])(<i>)/$1 $2/g;   # fix missing spaces before <i> (error in source HTML)
     $html =~ s/([a-z])([A-Z])/$1 $2/g; # fix missing spaces from collapsed words (error in source HTML)
 
+    # hack: add back in any missing spaces after some punctuation
+    $html =~ s/([a-z])([:;,!?])([A-Za-z])/$1$2 $3/g;
+
     return $html;
 }
 

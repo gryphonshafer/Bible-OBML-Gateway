@@ -1,6 +1,7 @@
 Revision history for Bible::OBML::Gateway
 
 {{$NEXT}}
+        - Bug fix to add back in any missing spaces after some punctuation
 
 2.07      2022-12-21 14:05:26-08:00 America/Los_Angeles
         - Several parse patches for edge-cases and Gateway source errors
