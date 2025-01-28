@@ -16,8 +16,8 @@ use Mojo::Util 'html_unescape';
 # VERSION
 
 has translation => 'NIV';
-has reference   => Bible::Reference->new( bible => 'Protestant' );
-has url         => Mojo::URL->new('https://www.biblegateway.com/passage/');
+has reference   => sub { Bible::Reference->new( bible => 'Protestant' ) };
+has url         => sub { Mojo::URL->new('https://www.biblegateway.com/passage/') };
 has ua          => sub {
     my $ua = Mojo::UserAgent->new( max_redirects => 3 );
     $ua->transactor->name( __PACKAGE__ . '/' . ( __PACKAGE__->VERSION // '2.0' ) );
